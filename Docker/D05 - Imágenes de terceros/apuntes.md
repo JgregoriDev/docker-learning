@@ -1,269 +1,330 @@
-# 🐳 Docker · D05: Imágenes de terceros
+# 🐳 Docker · D05 (modo socrático): Imágenes de terceros
 
 > 📅 Lunes 19 de octubre de 2026 · ⏱️ 45 min
 
-**🎯 Objetivo:** usar imágenes que ha hecho otra gente (bases de datos y herramientas de línea de comandos) desde Docker Hub, elegirlas con criterio y conectarte a ellas.
-
-| ⏱️ Tiempo | 📚 Bloque |
-| :---: | :--- |
-| 10 min | 🔎 Docker Hub y cómo elegir una imagen |
-| 15 min | 🗄️ Bases de datos en contenedores |
-| 8 min | 🧰 Utilidades de línea de comandos |
-| 12 min | 🛠️ Práctica: Postgres y Redis |
+**🎯 Objetivo:** aprender a elegir y usar imágenes de Docker Hub (bases de datos y herramientas) **descubriéndolo tú**. Aquí no hay respuestas: hay preguntas, pistas y experimentos. La terminal es el juez.
 
 ---
 
-## 🔎 1. Docker Hub y cómo elegir una imagen `10 min`
+## 🧭 Cómo funciona este cuaderno
 
-No hace falta construir todo desde cero. **Docker Hub** ([hub.docker.com](https://hub.docker.com)) es la biblioteca pública donde miles de personas y empresas publican imágenes listas para usar.
+| Icono | Qué significa |
+| :---: | :--- |
+| 🤔 | **Pregunta** para pensar |
+| ✍️ | **Escribe tu respuesta** antes de seguir (en papel o en un archivo) |
+| 💡 | **Pista**. Ábrelas de una en una y solo si te atascas |
+| 🧪 | **Experimento**: ejecútalo y compara con lo que predijiste |
+| 🎯 | **Reto** |
+| 📮 | Lo que me envías al final |
 
 ```mermaid
 flowchart LR
-    H["🌐 Docker Hub<br/>miles de imágenes"] -->|docker pull| L["💻 Tu ordenador"]
-    L -->|docker run| C["📦 Contenedor"]
-```
-
-### 🏅 Quién la ha hecho
-
-| 🏷️ Sello | 📝 Qué significa | 🚦 Confianza |
-| :--- | :--- | :---: |
-| **Docker Official Image** | Mantenida con Docker, con documentación y actualizaciones. Ejemplos: `postgres`, `redis`, `nginx`. | ✅ Alta |
-| **Verified Publisher** | Publicada por una empresa verificada por Docker. | ✅ Alta |
-| **Sponsored OSS** | Proyecto de código abierto apoyado por Docker. | ✅ Alta |
-| *Sin sello* | La ha subido cualquier persona. | ⚠️ Revísala |
-
-```mermaid
-flowchart TD
-    A["🔎 Busco una imagen"] --> B{"¿Tiene el sello<br/>Docker Official Image?"}
-    B -->|Sí| E["✅ Úsala"]
-    B -->|No| C{"¿Es Verified Publisher<br/>o Sponsored OSS?"}
-    C -->|Sí| E
-    C -->|No| D["⚠️ Revísala con cuidado:<br/>descargas, última actualización,<br/>README y Dockerfile"]
-```
-
-### 🔍 Qué mirar antes de usarla
-
-- [ ] **Sello:** oficial o verificada es lo mejor.
-- [ ] **Descargas:** millones de descargas suelen indicar que es de fiar.
-- [ ] **Última actualización:** si lleva años sin cambios, puede tener fallos de seguridad.
-- [ ] **README:** explica las variables, los puertos y los volúmenes que necesita.
-- [ ] **Etiquetas (tags):** mira qué versiones hay disponibles.
-
-Buscar desde la terminal:
-
-```bash
-docker search postgres
-```
-
-La columna `OFFICIAL` marca con `[OK]` las oficiales.
-
-> [!WARNING]
-> Una imagen de terceros **ejecuta código que no has escrito tú**. Usa imágenes oficiales siempre que puedas, fija la versión y no uses opciones como `--privileged` sin entender qué hacen.
-
-### 🏷️ Variantes de etiqueta
-
-Una misma imagen suele tener varias etiquetas:
-
-| 🏷️ Etiqueta | 📝 Qué es |
-| :--- | :--- |
-| `postgres:17` | La versión 17 con Debian, la variante normal. |
-| `postgres:17-alpine` | La versión 17 sobre Alpine Linux: **mucho más ligera**. |
-| `python:3.12-slim` | Debian reducido: menos tamaño que la normal. |
-| `postgres:latest` | La etiqueta por defecto. **Evítala**: puede cambiar con el tiempo. |
-
-> [!NOTE]
-> Docker Hub limita las descargas si no has iniciado sesión. Si ves el error `toomanyrequests`, espera un rato o inicia sesión con `docker login`.
-
----
-
-## 🗄️ 2. Bases de datos en contenedores `15 min`
-
-Instalar una base de datos en tu ordenador es lento y la deja ahí para siempre. Con Docker, **la arrancas en segundos y la borras sin dejar rastro**. Ideal para aprender y para desarrollar.
-
-### 🐘 Postgres
-
-```bash
-docker run -d --name db -e POSTGRES_PASSWORD=secreto -p 5432:5432 postgres:17
-```
-
-```text
-docker run  -d  --name db  -e POSTGRES_PASSWORD=secreto  -p 5432:5432  postgres:17
-              │      │              │                        │             │
-              │      │              │                        │             └─ imagen oficial y versión
-              │      │              │                        └─ puerto de tu ordenador → puerto de Postgres
-              │      │              └─ variable de entorno: la contraseña (obligatoria)
-              │      └─ nombre del contenedor
-              └─ en segundo plano
+    Q["🤔 Pregunta"] --> P["✍️ Predice y escribe"]
+    P --> E["🧪 Ejecuta"]
+    E --> C{"¿Coincide?"}
+    C -->|Sí| N["✅ Sigue"]
+    C -->|No| H["💡 Pista"]
+    H --> R["🔁 Piensa otra vez"]
+    R --> P
+    N --> M["📮 Envíame tus respuestas"]
 ```
 
 > [!IMPORTANT]
-> Las imágenes de bases de datos se configuran con **variables de entorno** (`-e`). Cada imagen tiene las suyas: mira el README en Docker Hub. Sin `POSTGRES_PASSWORD`, el contenedor de Postgres **se para solo** nada más arrancar.
+> **Regla de oro:** primero predice, después ejecuta. Equivocarte en la predicción es donde más se aprende. No busques la respuesta antes de escribir la tuya.
 
-Espera unos segundos y comprueba que está listo:
+| ⏱️ Tiempo | 📚 Bloque |
+| :---: | :--- |
+| 7 min | 📝 Calentamiento: cuestionario de D04 |
+| 8 min | 🔎 Parte 1: elegir una imagen |
+| 15 min | 🗄️ Parte 2: bases de datos |
+| 7 min | 🧰 Parte 3: herramientas sin instalar |
+| 8 min | 🎯 Parte 4: reto y reflexión |
 
-```bash
-docker logs db
-```
+### 📊 Mi progreso
 
-Debe aparecer: `database system is ready to accept connections`.
-
-### 🔌 Dos formas de conectarte
-
-```mermaid
-flowchart LR
-    T["👤 Tú"] -->|"docker exec -it db psql -U postgres"| C["📦 Contenedor db<br/>Postgres en el puerto 5432"]
-    A["💻 Tu app o un cliente<br/>instalado en tu ordenador"] -->|"localhost:5432"| C
-```
-
-| 🔌 Forma | ⌨️ Comando | 👍 Cuándo |
-| :--- | :--- | :--- |
-| **Desde dentro** | `docker exec -it db psql -U postgres` | No necesitas instalar nada. La más sencilla. |
-| **Desde fuera** | `psql -h localhost -U postgres` | Tu app o tu cliente usa el puerto publicado con `-p`. |
-
-Dentro de `psql` puedes probar:
-
-```sql
-CREATE TABLE tareas (id serial PRIMARY KEY, texto text);
-INSERT INTO tareas (texto) VALUES ('aprender Docker');
-SELECT * FROM tareas;
-\dt
-\q
-```
-
-`\dt` lista las tablas y `\q` sale.
-
-### ⚡ Redis
-
-```bash
-docker run -d --name cache -p 6379:6379 redis:7
-docker exec -it cache redis-cli
-```
-
-Dentro de `redis-cli`:
-
-```text
-PING                    → PONG
-SET nombre "Ana"        → OK
-GET nombre              → "Ana"
-INCR visitas            → (integer) 1
-KEYS *                  → lista de claves
-exit
-```
-
-### 📋 Otras bases de datos populares
-
-| 🗄️ Base de datos | 🖼️ Imagen | 🔑 Variable obligatoria | 🔌 Puerto | 💻 Cliente dentro |
-| :--- | :--- | :--- | :---: | :--- |
-| **PostgreSQL** | `postgres` | `POSTGRES_PASSWORD` | 5432 | `psql` |
-| **MySQL** | `mysql` | `MYSQL_ROOT_PASSWORD` | 3306 | `mysql` |
-| **MongoDB** | `mongo` | ninguna | 27017 | `mongosh` |
-| **Redis** | `redis` | ninguna | 6379 | `redis-cli` |
-
-### 🔒 Dos avisos de seguridad
-
-> [!WARNING]
-> **Contraseñas:** `-e POSTGRES_PASSWORD=secreto` es solo para practicar. La contraseña queda visible con `docker inspect`. En proyectos reales se usan *secrets* (los verás en Kubernetes, sesión K07).
-
-> [!WARNING]
-> **Puertos:** `-p 5432:5432` abre el puerto a **toda tu red**. Para dejarlo solo en tu ordenador usa `-p 127.0.0.1:5432:5432`.
-
-> [!CAUTION]
-> **Los datos se pierden al borrar el contenedor.** Si haces `docker rm -f db`, la tabla que creaste desaparece. Lo arreglaremos con volúmenes en **D06**.
+- [ ] Calentamiento D04
+- [ ] Parte 1: elegir una imagen
+- [ ] Parte 2: bases de datos
+- [ ] Parte 3: herramientas sin instalar
+- [ ] Parte 4: reto y reflexión
+- [ ] Respuestas enviadas
 
 ---
 
-## 🧰 3. Utilidades de línea de comandos `8 min`
+## 📝 Calentamiento: ¿qué recuerdas de D04? `7 min`
 
-Las imágenes no son solo para servidores. También sirven para **usar herramientas sin instalarlas**. Con `--rm`, el contenedor se borra al terminar y tu ordenador queda limpio.
+Contesta **sin mirar los apuntes**. Después me envías tus respuestas y te diré en qué te has equivocado y por qué.
+
+### 1️⃣ Contenedor parado
+
+Paraste el contenedor `web` con `docker stop web` y `docker ps` ya no lo muestra. ¿Qué comando usas para comprobar que sigue existiendo?
+
+- **A)** `docker ls`
+- **B)** `docker ps -a`
+- **C)** `docker images`
+- **D)** `docker logs`
+
+### 2️⃣ Terminal dentro de un contenedor
+
+El contenedor `web` está en marcha. Quieres abrir una terminal **dentro de ese mismo contenedor**. ¿Qué comando usas?
+
+- **A)** `docker run -it web sh`
+- **B)** `docker exec -it web sh`
+- **C)** `docker start -it web sh`
+- **D)** `docker logs -it web sh`
+
+### 3️⃣ Parar con calma o de golpe
+
+¿Qué diferencia hay entre `docker stop` y `docker kill`?
+
+- **A)** `stop` borra el contenedor y `kill` solo lo para
+- **B)** `stop` pide que termine y espera unos segundos; `kill` lo corta de golpe
+- **C)** Son idénticos
+- **D)** `kill` pide que termine y `stop` lo corta de golpe
+
+### 4️⃣ El nombre de una imagen
+
+En `docker.io/library/nginx:1.27`, ¿qué es `library`?
+
+- **A)** La versión
+- **B)** El registro
+- **C)** El espacio donde viven las imágenes oficiales
+- **D)** El nombre del contenedor
+
+### 5️⃣ Verdadero o falso
+
+> «Si no escribo etiqueta, Docker usa `latest`, y `latest` siempre es la versión más nueva».
+
+✍️ Responde **Verdadero** o **Falso** y justifícalo en una frase.
+
+### 6️⃣ Redes
+
+Creas la red `mired` y arrancas dos contenedores en ella: `web` y `cliente`. ¿Cómo llega `cliente` a `web`?
+
+- **A)** Con la dirección `127.0.0.1`
+- **B)** Usando el nombre `web`, por ejemplo `http://web`
+- **C)** No pueden comunicarse
+- **D)** Solo si `web` publica un puerto con `-p`
+
+### 7️⃣ Borrar a la fuerza
+
+Un contenedor `web` **sigue en marcha**. Ejecutas `docker rm -f web`. ¿Qué ocurre?
+
+- **A)** Da un error
+- **B)** Lo para y lo borra
+- **C)** Solo lo para
+- **D)** Borra también su imagen
+
+### 8️⃣ Volúmenes
+
+Guardaste `nota.txt` con este comando, y ese contenedor ya se borró por el `--rm`:
 
 ```bash
-docker run --rm python:3.12 python -c "print('hola desde Python')"
-docker run --rm node:22 node -v
-docker run --rm curlimages/curl -s https://example.com
-docker run --rm -it ubuntu:24.04 bash
+docker run --rm -v datos:/data alpine sh -c "echo hola > /data/nota.txt"
 ```
 
-| 🧰 Herramienta | 🖼️ Imagen | ⌨️ Ejemplo |
-| :--- | :--- | :--- |
-| Python | `python` | `docker run --rm python:3.12 python --version` |
-| Node.js | `node` | `docker run --rm node:22 node -v` |
-| curl | `curlimages/curl` | `docker run --rm curlimages/curl -s https://example.com` |
-| Otro Linux | `ubuntu`, `alpine` | `docker run --rm -it ubuntu:24.04 bash` |
-
-### 📂 Usar archivos de tu carpeta
-
-Con `-v` compartes la carpeta actual con el contenedor, y con `-w` eliges en qué carpeta trabaja:
+Ahora ejecutas:
 
 ```bash
-docker run --rm -v "$PWD":/app -w /app python:3.12 python script.py
+docker run --rm -v datos:/data alpine cat /data/nota.txt
 ```
 
-```mermaid
-flowchart LR
-    F["📁 Tu carpeta actual"] <-->|"-v $PWD:/app"| C["📦 Contenedor<br/>carpeta /app"]
-    C --> R["▶️ python script.py"]
-```
-
-> 💡 Esto es un **bind mount**: lo estudiaremos en D06.
-
-### ✨ Qué ventajas tiene
-
-| 🎁 Ventaja | 📝 Ejemplo |
-| :--- | :--- |
-| Sin instalar nada | Pruebas Python sin tocar el de tu ordenador. |
-| Versiones a la carta | `python:3.10` y `python:3.12` conviven sin problema. |
-| Limpio | Con `--rm` no queda nada al terminar. |
-| Reproducible | Tus compañeros usan la misma versión exacta. |
+✍️ ¿Qué imprime y **por qué**?
 
 ---
 
-## 🛠️ 4. Práctica: Postgres y Redis `12 min`
+## 🔎 Parte 1: elegir una imagen `8 min`
 
-### Paso 1 · arranca Postgres
+### 🤔 1.1 Tres candidatas
+
+Necesitas Postgres y Docker Hub te da estos resultados *(cifras de ejemplo; las imágenes B y C son inventadas)*:
+
+| | Imagen | Sello | Descargas | Última actualización |
+| :---: | :--- | :--- | ---: | :--- |
+| **A** | `postgres` | Docker Official Image | +1.000 M | hace 3 días |
+| **B** | `pgfacil/postgres-listo` | ninguno | 4.200 | hace 3 años |
+| **C** | `acmedb/postgres` | Verified Publisher | 12 M | hace 1 semana |
+
+✍️ Ordénalas de **más a menos fiable** y escribe **en qué datos te has fijado**.
+
+<details>
+<summary>💡 Pista 1</summary>
+
+Mira cada columna de la tabla y pregúntate qué te dice sobre quién la mantiene.
+
+</details>
+
+<details>
+<summary>💡 Pista 2</summary>
+
+Una imagen que lleva años sin actualizarse puede arrastrar fallos de seguridad que ya se corrigieron en otras.
+
+</details>
+
+### 🤔 1.2 La tentación
+
+Imagina que **B** trae justo un extra que necesitas y las otras no. ✍️ Nombra **al menos dos comprobaciones** que harías antes de ejecutarla.
+
+<details>
+<summary>💡 Pista 1</summary>
+
+En la página de la imagen en Docker Hub hay más que la tabla de arriba. ¿Qué documentación o código puedes leer?
+
+</details>
+
+<details>
+<summary>💡 Pista 2</summary>
+
+Piensa en lo que pasaría si esa imagen hiciera algo que no esperas. ¿Con qué datos o permisos la probarías?
+
+</details>
+
+### 🧪 1.3 Busca desde la terminal
 
 ```bash
-docker run -d --name db -e POSTGRES_PASSWORD=secreto -p 5432:5432 postgres:17
-docker logs db
+docker search postgres --limit 5
 ```
 
-Espera a ver `ready to accept connections`.
+✍️ **Antes de ejecutar:** ¿en qué columna esperas ver si una imagen es oficial?
 
-### Paso 2 · conéctate y crea datos
+### 🧪 1.4 Las etiquetas
+
+Tienes tres etiquetas de la misma imagen: `postgres:17`, `postgres:17-alpine` y `postgres:latest`.
+
+✍️ **Predice:**
+1. ¿Cuál **pesará menos**?
+2. ¿Cuál tiene **más riesgo** de que tu proyecto se comporte distinto dentro de unos meses?
+
+Después verifica el tamaño:
 
 ```bash
-docker exec -it db psql -U postgres
+docker pull postgres:17
+docker pull postgres:17-alpine
+docker image ls postgres
 ```
 
-```sql
-CREATE TABLE tareas (id serial PRIMARY KEY, texto text);
-INSERT INTO tareas (texto) VALUES ('aprender Docker');
-INSERT INTO tareas (texto) VALUES ('probar Postgres');
-SELECT * FROM tareas;
-\q
-```
+✍️ ¿Acertaste? ¿Qué diferencia de tamaño ves, aproximadamente?
 
-### Paso 3 · arranca Redis y úsalo
+---
+
+## 🗄️ Parte 2: bases de datos `15 min`
+
+### 🧪 2.1 Arrancar sin contraseña
 
 ```bash
-docker run -d --name cache -p 6379:6379 redis:7
-docker exec -it cache redis-cli
+docker run -d --name db0 postgres:17
 ```
 
-```text
-PING
-SET curso "Docker"
-GET curso
-exit
-```
+✍️ **Antes de seguir, predice:**
+1. ¿Qué mostrará `docker ps`?
+2. ¿Y `docker ps -a`?
+3. ¿Dónde mirarías para saber **por qué**?
 
-### Paso 4 · mira los dos a la vez
+Ahora compruébalo y limpia:
 
 ```bash
 docker ps
-docker stats --no-stream
+docker ps -a
+docker rm db0
 ```
 
-### Paso 5 · reto: ¿se guardan los datos?
+<details>
+<summary>💡 Pista 1</summary>
+
+En D04 viste un comando para leer lo que ha escrito un contenedor.
+
+</details>
+
+<details>
+<summary>💡 Pista 2</summary>
+
+Lee el mensaje con calma: te dice qué le falta a la imagen para arrancar.
+
+</details>
+
+### 🧪 2.2 Arrancar bien
+
+Con lo que has leído en el mensaje, arranca Postgres **tú solo**. Necesitas nombre `db`, el puerto 5432 publicado y la variable que faltaba.
+
+✍️ Escribe el comando completo que has usado:
+
+```text
+docker run ...
+```
+
+<details>
+<summary>💡 Pista 1</summary>
+
+Las variables de entorno se pasan con `-e NOMBRE=valor`.
+
+</details>
+
+<details>
+<summary>💡 Pista 2</summary>
+
+El mensaje de error del ejercicio anterior incluye el **nombre exacto** de la variable.
+
+</details>
+
+🤔 ¿Cómo sabes que Postgres **ya está listo** para recibir conexiones? ✍️ ¿Qué comando usas y qué frase buscas?
+
+### 🤔 2.3 Dos caminos para conectarte
+
+```mermaid
+flowchart LR
+    T["👤 Tú"] -->|"❓ comando A"| C["📦 Contenedor db<br/>Postgres"]
+    P["💻 Un cliente instalado<br/>en tu ordenador"] -->|"❓ dirección B"| C
+```
+
+✍️ ¿Qué va en **A** y qué va en **B**?
+✍️ ¿Cuál de los dos caminos funciona **aunque no hubieras usado `-p`**? ¿Por qué?
+
+<details>
+<summary>💡 Pista 1</summary>
+
+Uno de los caminos entra *dentro* del contenedor y usa herramientas que ya trae. Piensa en `docker exec`.
+
+</details>
+
+<details>
+<summary>💡 Pista 2</summary>
+
+El cliente de Postgres se llama `psql` y el usuario por defecto se llama `postgres`.
+
+</details>
+
+### 🧪 2.4 Tu primera tabla
+
+Entra en Postgres con el camino A.
+
+✍️ **Escribe tú las sentencias SQL** para:
+1. Crear una tabla `tareas` con dos columnas: un `id` automático y un `texto`.
+2. Insertar **dos tareas**.
+3. Leer todas las filas.
+
+<details>
+<summary>💡 Pista 1</summary>
+
+Las tres sentencias empiezan por `CREATE TABLE`, `INSERT INTO` y `SELECT`.
+
+</details>
+
+<details>
+<summary>💡 Pista 2</summary>
+
+Dentro de `psql`, `\dt` lista las tablas y `\q` sale.
+
+</details>
+
+### 🤔 2.5 ¿Y si borro el contenedor?
+
+Vas a borrar `db` y crear otro igual.
+
+✍️ **Predice:**
+1. ¿Seguirá existiendo la tabla `tareas`?
+2. ¿**Por qué** sí o por qué no? Usa lo que viste en D02 sobre capas.
+
+Verifica:
 
 ```bash
 docker rm -f db
@@ -271,115 +332,261 @@ docker run -d --name db -e POSTGRES_PASSWORD=secreto -p 5432:5432 postgres:17
 docker exec -it db psql -U postgres -c "SELECT * FROM tareas;"
 ```
 
-Verás un error: la tabla `tareas` ya no existe. **Los datos viven dentro del contenedor y se borran con él.** Es justo lo que arreglamos en D06.
+✍️ ¿Qué ha pasado? ¿Coincide con tu predicción?
 
-### Paso 6 · limpia
+### 🧪 2.6 Una pista inesperada
+
+Después de borrar el primer contenedor, ejecuta:
 
 ```bash
-docker rm -f db cache
+docker volume ls
 ```
 
-### ✅ Comprueba
-
-- [ ] Postgres arranca y `docker logs db` dice `ready to accept connections`.
-- [ ] He creado una tabla y he leído datos con `SELECT`.
-- [ ] Redis responde `PONG` y guarda y lee una clave.
-- [ ] He comprobado que los datos se pierden al borrar el contenedor.
-- [ ] Sé que las contraseñas con `-e` son solo para practicar.
-
-### 🆘 Si algo falla
-
-| ❌ Problema | 🔍 Causa | 🔧 Solución |
-| :--- | :--- | :--- |
-| El contenedor `db` se para solo | Falta `POSTGRES_PASSWORD` | Mira `docker logs db`, bórralo y créalo con la variable. |
-| `port is already allocated` o `address already in use` | Ya tienes algo usando el puerto 5432 | Cambia el de la izquierda: `-p 5433:5432`. |
-| `password authentication failed` | Contraseña distinta a la usada al crear | La contraseña solo se aplica la **primera vez** que se crea la base. Borra el contenedor y créalo de nuevo. |
-| `psql: command not found` | No tienes el cliente en tu ordenador | Usa `docker exec -it db psql -U postgres`. |
-| `toomanyrequests` | Límite de descargas de Docker Hub | Espera o ejecuta `docker login`. |
-
----
-
-## 🗂️ Chuleta rápida
-
-| 🎯 Quiero… | ⌨️ Comando |
-| :--- | :--- |
-| Buscar una imagen | `docker search <nombre>` |
-| Ver la versión de Postgres disponible | Mira las etiquetas en Docker Hub |
-| Arrancar Postgres | `docker run -d --name db -e POSTGRES_PASSWORD=<clave> -p 5432:5432 postgres:17` |
-| Entrar en Postgres | `docker exec -it db psql -U postgres` |
-| Arrancar Redis | `docker run -d --name cache -p 6379:6379 redis:7` |
-| Entrar en Redis | `docker exec -it cache redis-cli` |
-| Usar una herramienta sin instalarla | `docker run --rm <imagen> <comando>` |
-| Compartir mi carpeta con el contenedor | `-v "$PWD":/app -w /app` |
-| Dejar el puerto solo en mi ordenador | `-p 127.0.0.1:5432:5432` |
-
----
-
-## ⭐ Ideas clave
-
-1. 🌐 **Docker Hub** guarda las imágenes. Prefiere las que tienen sello oficial o verificado.
-2. 🔍 Antes de usar una imagen, mira sus descargas, su última actualización y su README.
-3. 🏷️ Fija siempre la versión y evita `latest`. Las variantes `-alpine` y `-slim` son más ligeras.
-4. 🔑 Las imágenes de bases de datos se configuran con variables de entorno (`-e`).
-5. 🔌 Puedes conectarte con `docker exec` (desde dentro) o por el puerto publicado (desde fuera).
-6. 🧰 Con `--rm` usas herramientas sin instalarlas y sin dejar rastro.
-7. 💾 Los datos de un contenedor se pierden al borrarlo: la solución son los volúmenes (D06).
-
----
-
-## 🧠 Autoevaluación
-
-Contesta sin mirar los apuntes y compara después.
+✍️ **Responde:**
+1. ¿Qué ves en la lista?
+2. ¿De dónde crees que ha salido eso, si **tú no creaste ningún volumen**?
+3. ¿Por qué el contenedor nuevo no ha usado esos datos?
 
 <details>
-<summary>1️⃣ ¿Qué es Docker Hub y para qué sirve?</summary>
+<summary>💡 Pista 1</summary>
 
-Es el registro público donde se publican imágenes. Sirve para descargar imágenes ya hechas con `docker pull` o `docker run`.
+Fíjate en el nombre del volumen. ¿Lo has puesto tú?
 
 </details>
 
 <details>
-<summary>2️⃣ ¿Qué miras antes de usar una imagen de terceros?</summary>
+<summary>💡 Pista 2</summary>
 
-El sello (oficial o verificada), las descargas, la fecha de la última actualización, el README y las etiquetas disponibles.
+Las imágenes pueden pedir a Docker que guarde ciertas carpetas fuera de la capa de escritura. ¿Qué pasa con eso al borrar el contenedor?
+
+</details>
+
+> 📌 Guarda tus conclusiones: en **D06** vas a aprender a controlar esto tú mismo.
+
+### 🧪 2.7 ¿Dónde queda tu contraseña?
+
+La pusiste con `-e`.
+
+✍️ **Predice:** ¿puede verla alguien que pueda ejecutar comandos de Docker en tu ordenador? ¿Con qué comando?
+
+Verifica:
+
+```bash
+docker inspect --format '{{.Config.Env}}' db
+```
+
+### 🤔 2.8 ¿Quién puede entrar?
+
+Tu comando incluía `-p 5432:5432`.
+
+✍️ **Responde:**
+1. ¿Qué otros equipos de tu red podrían intentar conectarse a ese puerto?
+2. ¿Cómo lo limitarías para que solo se pueda usar **desde tu ordenador**?
+
+<details>
+<summary>💡 Pista 1</summary>
+
+La parte izquierda de `-p` puede llevar **una dirección** delante del número de puerto.
 
 </details>
 
 <details>
-<summary>3️⃣ ¿Por qué se recomienda evitar la etiqueta <code>latest</code>?</summary>
+<summary>💡 Pista 2</summary>
 
-Porque cambia con el tiempo y puede traer una versión distinta de la que probaste. Indicar la versión hace que todos usen lo mismo.
-
-</details>
-
-<details>
-<summary>4️⃣ ¿Cómo se le da la contraseña a Postgres?</summary>
-
-Con la variable de entorno `POSTGRES_PASSWORD`, usando `-e` en `docker run`. Es obligatoria.
+¿Cuál es la dirección que siempre significa «este mismo ordenador»?
 
 </details>
 
-<details>
-<summary>5️⃣ ¿Qué diferencia hay entre conectarte con <code>docker exec</code> y por <code>localhost:5432</code>?</summary>
+### 🎯 2.9 Descubre otras bases de datos
 
-Con `docker exec` entras dentro del contenedor y usas su cliente, sin instalar nada. Con `localhost:5432` te conectas desde tu ordenador al puerto publicado con `-p`.
+Completa la tabla. Para **Redis** y **MySQL**, busca la información tú en la página de la imagen en Docker Hub (apartado de documentación).
 
-</details>
-
-<details>
-<summary>6️⃣ ¿Qué pasa con los datos si borras el contenedor de la base de datos?</summary>
-
-Se pierden, porque se guardan en la capa de escritura del contenedor. Para conservarlos se usan volúmenes.
-
-</details>
+| | 🐘 Postgres | ⚡ Redis | 🐬 MySQL |
+| :--- | :--- | :--- | :--- |
+| **Imagen** | `postgres` | ❓ | ❓ |
+| **Variable obligatoria** | `POSTGRES_PASSWORD` | ❓ | ❓ |
+| **Puerto** | 5432 | ❓ | ❓ |
+| **Cliente dentro** | `psql` | ❓ | ❓ |
 
 <details>
-<summary>7️⃣ ¿Para qué sirve <code>--rm</code> al usar una herramienta como <code>python</code>?</summary>
+<summary>💡 Pista</summary>
 
-Borra el contenedor cuando termina, así no queda nada sobrante en tu ordenador.
+Una de las dos columnas vacías **no necesita** ninguna variable obligatoria para arrancar.
 
 </details>
 
 ---
 
-➡️ **Siguiente sesión, D06:** persistencia de datos (volume mounts y bind mounts).
+## 🧰 Parte 3: herramientas sin instalar `7 min`
+
+### 🤔 3.1 Ventajas
+
+Puedes ejecutar Python así, sin instalarlo:
+
+```bash
+docker run --rm python:3.12 python --version
+```
+
+✍️ Escribe **tres ventajas** frente a instalar Python en tu ordenador.
+
+### 🧪 3.2 El papel de `--rm`
+
+✍️ **Predice:** después de ejecutar el comando de arriba, ¿aparecerá un contenedor en `docker ps -a`? ¿Y si quitas el `--rm`?
+
+Verifica las dos versiones:
+
+```bash
+docker run --rm python:3.12 python --version
+docker ps -a
+docker run python:3.12 python --version
+docker ps -a
+```
+
+Limpia después con `docker container prune`.
+
+### 🧪 3.3 Dos versiones a la vez
+
+```bash
+docker run --rm python:3.11 python --version
+docker run --rm python:3.12 python --version
+```
+
+✍️ ¿Qué te dice esto sobre tener **varias versiones** de una misma herramienta?
+
+### 🎯 3.4 Tu propio script
+
+Crea `hola.py` en una carpeta con este contenido:
+
+```python
+print("hola desde un contenedor")
+```
+
+Completa el comando para que el contenedor **vea tu archivo** y lo ejecute:
+
+```text
+docker run --rm ❓ ❓ python:3.12 python hola.py
+```
+
+✍️ Escribe qué has puesto en cada ❓ y para qué sirve cada opción.
+
+<details>
+<summary>💡 Pista 1</summary>
+
+En D04 usaste `-v nombre:ruta` con un **volumen**. Aquí, en lugar del nombre del volumen, va una carpeta de tu ordenador.
+
+</details>
+
+<details>
+<summary>💡 Pista 2</summary>
+
+La carpeta actual se escribe `"$PWD"`. La ruta dentro del contenedor la eliges tú, por ejemplo `/app`. La otra opción elige **en qué carpeta trabaja** el comando.
+
+</details>
+
+> [!NOTE]
+> Si ves `Permission denied` en Fedora u otra distribución con SELinux, añade `:Z` al final de la ruta del contenedor, por ejemplo `/app:Z`.
+
+---
+
+## 🎯 Parte 4: reto y reflexión `8 min`
+
+### 🎯 4.1 Reto con Redis
+
+```mermaid
+flowchart LR
+    A["▶️ Arranca Redis"] --> B["✍️ Guarda una clave<br/>con tu nombre"]
+    B --> C["🔄 docker restart"]
+    C --> D{"¿Sigue la clave?"}
+    D --> E["🗑️ docker rm + nuevo docker run"]
+    E --> F{"¿Sigue la clave?"}
+```
+
+✍️ **Predice los dos ❓ antes de ejecutar** y razónalo con lo que has aprendido en esta sesión.
+
+Después demuéstralo con comandos. Los que necesitas son de D04 y D05.
+
+<details>
+<summary>💡 Pista 1</summary>
+
+La clave se guarda con `SET` y se lee con `GET` dentro de `redis-cli`.
+
+</details>
+
+<details>
+<summary>💡 Pista 2</summary>
+
+Recuerda el experimento 2.6: mira `docker volume ls` y piensa qué le pasa a un volumen sin nombre al crear un contenedor nuevo.
+
+</details>
+
+### 🤔 4.2 Para un compañero
+
+✍️ Un compañero va a copiar un comando de Internet con una imagen que no conoce. En **tres frases**, ¿qué le recomendarías mirar y qué opciones evitar?
+
+### 📈 4.3 ¿Qué tal me ha ido?
+
+Puntúa tu seguridad de **1** (nada) a **5** (podría enseñarlo):
+
+| Tema | 1 | 2 | 3 | 4 | 5 |
+| :--- | :-: | :-: | :-: | :-: | :-: |
+| Elegir una imagen en Docker Hub | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Etiquetas y versiones | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Arrancar una base de datos con `-e` y `-p` | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Conectarme con `exec` o por puerto | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Usar herramientas con `--rm` | ☐ | ☐ | ☐ | ☐ | ☐ |
+
+---
+
+## 📮 Entrega: envíame tus respuestas
+
+Copia esta plantilla en el chat y rellénala. Si no sabes algo, escribe `no sé`: es útil para mí.
+
+```text
+CUESTIONARIO D04
+1:  2:  3:  4:
+5 (V/F + motivo):
+6:  7:
+8:
+
+PARTE 1
+1.1 orden y datos:
+1.2 comprobaciones:
+1.3 predicción:
+1.4 predicción y resultado:
+
+PARTE 2
+2.1 predicción:
+2.2 comando:
+2.2 cómo sé que está listo:
+2.3 A / B / cuál funciona sin -p:
+2.4 SQL:
+2.5 predicción y resultado:
+2.6 respuestas:
+2.7 predicción:
+2.8 respuestas:
+2.9 tabla:
+
+PARTE 3
+3.1 ventajas:
+3.2 predicción:
+3.3 conclusión:
+3.4 comando y opciones:
+
+PARTE 4
+4.1 predicciones y resultado:
+4.2 consejo:
+4.3 mi confianza (1-5) por tema:
+```
+
+### 🔁 Qué haré yo con tus respuestas
+
+```mermaid
+flowchart LR
+    R["📮 Tus respuestas"] --> C["✅ Corrijo el cuestionario<br/>y te digo en qué te equivocaste"]
+    C --> D["🔍 Te explico por qué<br/>con una pregunta, no un sermón"]
+    D --> N["🔁 Te propongo un mini ejercicio<br/>para lo que falló"]
+```
+
+---
+
+➡️ **Siguiente sesión, D06:** persistencia de datos. Lo que descubras en los experimentos 2.5 y 2.6 será tu punto de partida.

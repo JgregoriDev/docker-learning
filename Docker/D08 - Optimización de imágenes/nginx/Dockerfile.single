@@ -1,0 +1,3 @@
+FROM nginx:alpine
+RUN echo "<h1>Hecho en una fase</h1>" > /usr/share/nginx/html/index.html
+RUN dd if=/dev/zero of=/pesado.bin bs=1M count=50

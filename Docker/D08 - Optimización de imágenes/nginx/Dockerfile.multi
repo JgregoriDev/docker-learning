@@ -1,0 +1,6 @@
+FROM alpine AS construir
+RUN echo "<h1>Hecho en dos fases</h1>" > /index.html
+RUN dd if=/dev/zero of=/pesado.bin bs=1M count=50
+
+FROM nginx:alpine
+COPY --from=construir /index.html /usr/share/nginx/html/index.html

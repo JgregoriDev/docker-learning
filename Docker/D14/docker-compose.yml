@@ -3,6 +3,8 @@ services:
     image: postgres:17
     container_name: postgresql
     restart: always
+    # expose:
+    #   - "5432"  
     ports:
       - "5050:5432"
     environment:

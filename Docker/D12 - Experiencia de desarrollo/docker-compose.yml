@@ -1,0 +1,10 @@
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8081:80"
+    develop:
+      watch:
+        - action: sync
+          path: ./html
+          target: /usr/shared/nginx/html
